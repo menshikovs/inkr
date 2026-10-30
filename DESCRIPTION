@@ -1,9 +1,9 @@
 Package: inkr
 Title: CSS-Like Styling Language for Terminal User Interfaces
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R:
-    person(given = "TODO-GIVEN-NAME", family = "TODO-FAMILY-NAME",
-           email = "todo-maintainer@example.com", role = c("aut", "cre"))
+    person(given = "Akims", family = "Mensikovs",
+           email = "akimm7926@gmail.com", role = c("aut", "cre"))
 Description: Ink for R is a CSS-like styling language and engine for
     terminal user interfaces. It parses stylesheets written in the 'inkr'
     language (files with the '.inkr' extension), compiles them into typed
@@ -14,9 +14,9 @@ Description: Ink for R is a CSS-like styling language and engine for
     of terminal capabilities, and serialized as ANSI escape sequences. The
     package does not render widgets or lay out a terminal, and has no
     dependency on any terminal user interface framework.
-License: file LICENSE
-URL: https://github.com/menshikovs/ink-for-r
-BugReports: https://github.com/menshikovs/ink-for-r/issues
+License: Apache License (== 2.0)
+URL: https://github.com/menshikovs/inkr
+BugReports: https://github.com/menshikovs/inkr/issues
 Depends: R (>= 4.0.0)
 Suggests: testthat (>= 3.1.5)
 Config/testthat/edition: 3

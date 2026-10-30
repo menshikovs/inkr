@@ -7,9 +7,8 @@ The language is inspired by Textual CSS (TCSS) but has its own specification
 and implementation. The package is a reusable styling engine: it does **not**
 depend on `termr` or any other terminal UI framework.
 
-> **Status: pre-release.** The pipeline below is implemented and tested. The language is
-> specified in [docs/language-spec-v0.1.md](docs/language-spec-v0.1.md). Package metadata
-> (author, license) still contains placeholders; see [Package metadata](#package-metadata).
+> **Version 0.1.0.** The pipeline below is implemented and tested. The language is
+> specified in [docs/language-spec-v0.1.md](docs/language-spec-v0.1.md).
 
 ## Overview
 
@@ -56,7 +55,7 @@ inkr works in separate steps, each consuming the output of the one before:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("menshikovs/ink-for-r")
+remotes::install_github("menshikovs/inkr", ref = "v0.1.0")
 ```
 
 ## Usage
@@ -538,7 +537,8 @@ show the effect. (`white` is the ANSI color white, index 7, so it is sent as `37
   colors at every depth. `"none"` emits no color instructions, and colors are not
   replaced by black.
 * **`default` vs `transparent`.** `default` is the terminal's own color (SGR `39`/`49`,
-  sent only when the stylesheet asked for it, not when a color was never set);
+  sent only when the element's own declarations asked for it, not when a color was
+  never set or only inherited);
   `transparent` is no fill. Both stay visible in the terminal style, and neither is
   black.
 * **Alpha.** Terminals have no alpha, so a partially transparent color is composited
@@ -620,8 +620,8 @@ Run `R CMD check --no-manual` for the full check. The tests that validate `READM
 `docs/language-spec-v0.1.md` need the source repository, so they are skipped when the tests
 run against an installed or built copy of the package.
 
-## Package metadata
+## License
 
-The version is `0.0.0.9000` (a development version). `DESCRIPTION` (author, maintainer e-mail)
-and `LICENSE` contain placeholders that must be filled in by the package author before any
-release; no license has been chosen yet.
+Copyright 2026 Akims Mensikovs.
+
+Licensed under the [Apache License 2.0](LICENSE).

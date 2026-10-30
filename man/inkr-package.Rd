@@ -81,17 +81,17 @@ Each layer signals its own condition class, with a stable machine-readable
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/menshikovs/ink-for-r}
-  \item Report bugs at \url{https://github.com/menshikovs/ink-for-r/issues}
+  \item \url{https://github.com/menshikovs/inkr}
+  \item Report bugs at \url{https://github.com/menshikovs/inkr/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: TODO-GIVEN-NAME TODO-FAMILY-NAME \email{todo-maintainer@example.com}
+\strong{Maintainer}: Akims Mensikovs \email{akimm7926@gmail.com}
 
 Authors:
 \itemize{
-  \item TODO-GIVEN-NAME TODO-FAMILY-NAME \email{todo-maintainer@example.com}
+  \item Akims Mensikovs \email{akimm7926@gmail.com}
 }
 
 }
