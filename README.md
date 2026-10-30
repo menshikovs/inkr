@@ -9,8 +9,9 @@ depend on `termr` or any other terminal UI framework.
 
 > **Status: early development.** Stylesheets are parsed, compiled into typed
 > declarations, matched against a logical element tree, run through the cascade
-> and turned into computed styles (typed values for every property). Nothing is
-> rendered: there is no terminal output, ANSI generation or layout yet.
+> and turned into computed styles (typed values for every property), and any
+> computed value can be explained. Nothing is rendered: there is no terminal
+> output, ANSI generation or layout yet.
 
 ## Installation
 
@@ -307,13 +308,116 @@ each value was obtained: `declaration`, `inherited`, `initial`,
 and selector index, specificity and source span where applicable) and the
 `element`. See `?ink_computed_style`.
 
+### Debugging styles
+
+`ink_explain(sheet, element, property)` answers *why* an element has the value it
+has. The three inspection functions divide the work:
+
+| Function | Answers |
+|----------|---------|
+| `ink_match()` | which rules apply to this element? |
+| `ink_compute()` | what is the final typed value of every property? |
+| `ink_explain()` | why does this property have this value? |
+
+```r
+sheet <- ink_compile(ink_parse("
+  Screen { color: green; }
+  Button { color: white; }
+  .primary { color: blue; }
+  #save { color: green; }
+"))
+screen <- ink_element("Screen", id = "main")
+panel <- ink_element("Container", parent = screen)
+button <- ink_element("Button", id = "save", classes = "primary", parent = panel)
+
+ink_match(sheet, button)                 # the 3 rules that apply (+ their specificity)
+ink_compute(sheet, button)$values$color  # green
+ink_explain(sheet, button, "color")
+#> <ink_style_explanation>
+#>
+#> Element: Button#save.primary
+#> Property: color
+#> Computed: green
+#> Origin: declaration
+#>
+#> Winner:
+#>   #save
+#>     color: green
+#>     specificity: (1, 0, 0)
+#>     rule 4, declaration 1
+#>     source: <text>:5:11
+#>
+#> Overridden:
+#>   Button
+#>     color: white
+#>     specificity: (0, 0, 1)
+#>     reason: lower specificity
+#>     rule 2, declaration 1
+#>     source: <text>:3:12
+#>
+#>   .primary
+#>     color: blue
+#>     specificity: (0, 1, 0)
+#>     reason: lower specificity
+#>     rule 3, declaration 1
+#>     source: <text>:4:14
+```
+
+For a value nobody declared, the explanation traces where it came from:
+
+```r
+ink_explain(sheet, ink_element("Label", parent = panel), "color")
+#> <ink_style_explanation>
+#>
+#> Element: Label
+#> Property: color
+#> Computed: green
+#> Origin: inherited
+#>
+#> No declaration for 'color' applies to this element.
+#>
+#> Resolution:
+#>   Screen#main
+#>     declaration: green (specificity (0, 0, 1), <text>:2:12)
+#>
+#>   Container
+#>     inherited from Screen#main: green
+#>
+#>   Label
+#>     inherited from Container: green
+```
+
+The result is structured data; printing is only a view of it:
+
+* `value`: the final typed value, identical to `ink_compute(...)$values[[property]]`;
+* `origin`: `declaration`, `inherited`, `initial`, `explicit_inherit` or
+  `explicit_initial` (the same as the computed provenance);
+* `winner` and `candidates`: every declaration for the property from the matching
+  rules, in stylesheet order, with rule, declaration and selector indices,
+  specificity, typed value, original text and source span. Each loser has a
+  `reason`: `lower_specificity`, `earlier_rule` (equal specificity, later rule
+  wins) or `earlier_declaration` (same rule, later declaration wins). Equal
+  values still lose by priority;
+* `resolution`: the chain of elements from the root, each with its own origin and
+  value, and the `effective_source`, the element that originally supplied the
+  value. An ancestor whose value was overridden further down is shown as
+  context only. `inherit` and `initial` keep their winning declaration; an
+  explicit `initial` ends the search at the registry value.
+
+`ink_explain()` does not reimplement the cascade: it runs the same loop as
+`ink_compute()` and records what happens, so it cannot disagree with the
+computed style. Custom registered properties work without changes. See
+`?ink_explain` for the full structure.
+
 ### Current limitations
 
 * No rendering, terminal output, ANSI generation or layout.
 * No caching: `ink_compute()` re-matches every element on the path each call.
 * One stylesheet only; no `unset`, `revert`, `!important` or inline styles.
-* Errors are `ink_match_error` (elements, matching) and `ink_compute_error`
-  (computation); see `?ink_match_error` and `?ink_compute_error`.
+* Errors are `ink_match_error` (elements, matching), `ink_compute_error`
+  (computation) and `ink_explain_error` (explanations); see `?ink_match_error`,
+  `?ink_compute_error` and `?ink_explain_error`.
+* `ink_explain()` explains one property per call.
 
 See `inst/examples/cascade.inkr` for an annotated stylesheet.
 
@@ -357,8 +461,8 @@ the structure of the syntax tree and the source location conventions,
 `?ink_compile` for variable resolution and the compiled representation,
 `?ink_values` for the typed values, `?ink_registry` for the property registry,
 `?ink_compile_error` for compilation errors, `?ink_element`, `?ink_match` and
-`?ink_specificity` for matching, and `?ink_compute` and `?ink_computed_style`
-for computed styles.
+`?ink_specificity` for matching, `?ink_compute` and `?ink_computed_style`
+for computed styles, and `?ink_explain` for debugging them.
 
 ## Development
 

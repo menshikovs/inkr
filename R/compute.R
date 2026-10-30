@@ -85,6 +85,21 @@
 ink_compute <- function(sheet, element) {
   validate_compute_sheet(sheet)
   chain <- compute_chain(element)
+  resolved <- compute_style_path(sheet, chain)
+  new_ink_computed_style(resolved$values, resolved$provenance, element)
+}
+
+# Computes the styles of a validated chain (see compute_chain()) from the root
+# down and returns the target's `list(values, provenance)`. This is the single
+# implementation of the match / cascade / resolve loop: ink_compute() uses it
+# as is, and ink_explain() passes a `visit` function to observe each element's
+# intermediate results without a second implementation.
+#
+# `visit(position, matches, winners, resolved)` is called once per element,
+# root first, after it has been resolved. `position` indexes `chain` (the
+# target is 1), `matches` are the rules matched for that element, `winners` the
+# cascade winners and `resolved` its computed values and provenance.
+compute_style_path <- function(sheet, chain, visit = NULL) {
   registry <- sheet$registry
   depth <- length(chain)
   # Root first: `chain[[depth]]` is the root and `chain[[1L]]` the target.
@@ -97,12 +112,15 @@ ink_compute <- function(sheet, element) {
       winners <- ink_cascade(matches, registry)
       parent_values <- if (is.null(resolved)) NULL else resolved$values
       resolved <- resolve_element_style(registry, winners, parent_values)
+      if (!is.null(visit)) {
+        visit(position, matches, winners, resolved)
+      }
     },
     ink_match_error = function(e) {
       abort_compute("invalid_compiled_stylesheet", e$detail, "sheet")
     }
   )
-  new_ink_computed_style(resolved$values, resolved$provenance, element)
+  resolved
 }
 
 validate_compute_sheet <- function(sheet) {
