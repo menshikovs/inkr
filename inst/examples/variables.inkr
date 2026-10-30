@@ -1,0 +1,62 @@
+/* Ink for R: variables and typed properties.
+
+   Compile with:
+     ink_compile(ink_read(system.file("examples", "variables.inkr", package = "inkr")))
+*/
+
+/* Variables are global and may be used before they are declared. */
+
+$primary: $accent;           /* a variable can refer to another one */
+$accent: #7c3aed;
+$surface: #181825;
+$text: #e4e4e7;
+$muted: bright-black;        /* ANSI color names stay ANSI colors */
+$muted: #6c7086;             /* the last declaration of a name wins */
+
+/* A variable can hold several tokens. */
+$frame: round $primary;      /* border style + color */
+$gutter: 1 2;                /* padding / margin shorthand */
+
+Screen {
+    background: $surface;
+    color: $text;
+    text-style: none;
+}
+
+Button {
+    color: white;
+    background: transparent;      /* no fill; not the same as black */
+    padding: $gutter;
+    margin: 0 1 2;
+    border: $frame;
+    width: auto;
+    height: 3;
+}
+
+Button.primary {
+    background: $primary;
+    text-style: bold underline;   /* flags are stored in a fixed order */
+}
+
+Button:focus {
+    border: heavy $accent;
+}
+
+Button:disabled {
+    color: $muted;
+    border: none;
+}
+
+/* Declarations are kept as written, duplicates included: choosing between
+   them is the job of the cascade, not of the compiler. */
+.warning {
+    color: yellow;
+    color: bright-yellow;
+}
+
+/* CSS-wide keywords are stored as markers. */
+Input {
+    color: inherit;
+    background: initial;
+    border: single #ff0000;       /* #rgb, #rgba, #rrggbb and #rrggbbaa */
+}

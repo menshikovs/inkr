@@ -1,0 +1,67 @@
+/* Ink for R: cascade, inheritance and computed styles.
+
+   Try it:
+     sheet <- ink_compile(ink_read(system.file("examples", "cascade.inkr", package = "inkr")))
+     screen <- ink_element("Screen", id = "main")
+     panel <- ink_element("Container", classes = "panel", parent = screen)
+     button <- ink_element("Button", id = "save", classes = "primary",
+                           states = "focus", parent = panel)
+     ink_compute(sheet, button)
+*/
+
+$primary: #7c3aed;
+$surface: #181825;
+
+/* `color` and `text-style` inherit by default; the other properties do not.
+   A Button inside a Screen gets the Screen's color without declaring one. */
+Screen {
+    color: white;
+    background: $surface;
+}
+
+Container {
+    padding: 1;                 /* not inherited by the Button */
+}
+
+/* Declarations that set the same property compete. Higher specificity wins;
+   equal specificity goes to the later declaration. */
+Button {
+    background: blue;
+    border: single white;
+    color: inherit;             /* explicit: take the parent's computed color */
+}
+
+Button.primary {
+    background: $primary;       /* (0,1,1) beats Button's (0,0,1) */
+}
+
+Button:focus {
+    text-style: bold;
+    text-style: bold underline; /* later declaration in the same rule wins */
+}
+
+/* An ID outranks any number of classes, whatever the order in the file. */
+#save {
+    border: round green;
+}
+
+Button.primary {
+    background: $surface;       /* same specificity as above, later: wins... */
+}
+
+#save {
+    background: $primary;       /* ...unless an ID rule overrides it */
+}
+
+/* A selector list matches through whichever of its selectors apply. For a
+   plain Button this rule has specificity (0,0,1); for #save it has (1,0,0). */
+Button, #save {
+    margin: 0 1;
+}
+
+/* `initial` resets a property to the registry's initial value, even one that
+   would otherwise be inherited. */
+.plain {
+    color: initial;
+    text-style: initial;
+}

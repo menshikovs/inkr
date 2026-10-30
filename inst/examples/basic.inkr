@@ -1,0 +1,66 @@
+/* Ink for R: example stylesheet.
+   Variables, selectors of every supported kind, and plain declarations. */
+
+/* Theme variables */
+
+$primary: #7c3aed;
+$background: #181825;
+$foreground: #e4e4e7;
+$muted: #6c7086;
+
+/* Base styles */
+
+Screen {
+    background: $background;
+    color: $foreground;
+}
+
+* {
+    text-style: none;
+}
+
+/* Widget styles */
+
+Button {
+    color: white;
+    padding: 1 2;
+    border: round $primary;
+}
+
+Button.primary {
+    background: $primary;
+    text-style: bold;
+}
+
+Button:focus {
+    border: heavy $primary;
+}
+
+Button:disabled {
+    color: $muted;
+}
+
+/* Compound, ID, descendant and child selectors */
+
+#results > .row:selected {
+    background: $primary;
+    color: white;
+}
+
+Screen #sidebar Button.primary:focus {
+    width: 50;
+    margin: 0 1;
+}
+
+Container > Button {
+    margin: 0 1;
+}
+
+/* Selector lists, and an empty rule */
+
+Button, Input {
+    padding: 0 1;
+}
+
+Placeholder {
+}
