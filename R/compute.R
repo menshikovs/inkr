@@ -99,28 +99,47 @@ ink_compute <- function(sheet, element) {
 # root first, after it has been resolved. `position` indexes `chain` (the
 # target is 1), `matches` are the rules matched for that element, `winners` the
 # cascade winners and `resolved` its computed values and provenance.
-compute_style_path <- function(sheet, chain, visit = NULL) {
-  registry <- sheet$registry
+compute_style_path <- function(sheet, chain, visit = NULL, prepared = NULL) {
   depth <- length(chain)
   # Root first: `chain[[depth]]` is the root and `chain[[1L]]` the target.
-  # `resolved` always holds the style of the element processed last, which is
-  # the parent of the next one.
-  resolved <- NULL
-  tryCatch(
+  # `step` always holds the result for the element processed last, which is the
+  # parent of the next one: its matching state and its computed style.
+  step <- NULL
+  with_compute_errors({
+    if (is.null(prepared)) {
+      prepared <- prepare_selectors(sheet)
+    }
     for (position in depth:1L) {
-      matches <- match_rules(sheet, chain[position:depth])
-      winners <- ink_cascade(matches, registry)
-      parent_values <- if (is.null(resolved)) NULL else resolved$values
-      resolved <- resolve_element_style(registry, winners, parent_values)
+      step <- compute_element_step(prepared, sheet$registry, chain[[position]], step)
       if (!is.null(visit)) {
-        visit(position, matches, winners, resolved)
+        visit(position, step$matches, step$winners, step$resolved)
       }
-    },
+    }
+  })
+  step$resolved
+}
+
+# One element of the root-to-target computation: match it (reusing the parent's
+# matching state), run the cascade, resolve keywords and inheritance from the
+# parent's computed values. `parent` is NULL for a root, otherwise a previous
+# result (its `state` and `resolved` are used). Shared by compute_style_path()
+# and by style sessions, which keep these results between calls.
+compute_element_step <- function(prepared, registry, element, parent = NULL) {
+  matched <- match_element(prepared, element, parent$state)
+  winners <- ink_cascade(matched$matches, registry)
+  resolved <- resolve_element_style(registry, winners, parent$resolved$values)
+  list(matches = matched$matches, state = matched$state, winners = winners, resolved = resolved)
+}
+
+# Matching errors found while preparing or matching a stylesheet are reported
+# as damaged-stylesheet compute errors.
+with_compute_errors <- function(expr) {
+  tryCatch(
+    expr,
     ink_match_error = function(e) {
       abort_compute("invalid_compiled_stylesheet", e$detail, "sheet")
     }
   )
-  resolved
 }
 
 validate_compute_sheet <- function(sheet) {

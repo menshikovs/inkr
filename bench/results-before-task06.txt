@@ -1,0 +1,27 @@
+inkr style benchmarks
+R: R version 4.6.1 (2026-06-24 ucrt) | platform: x86_64-w64-mingw32 | date: 2026-10-30 
+sessions available: FALSE | mode: median of 3/2/1 runs 
+
+A. chain, no descendant selectors (2 rules): ink_compute()
+ depth seconds time_ratio depth_ratio
+   100   0.040         NA          NA
+   500   0.100       2.50           5
+  1000   0.180       1.80           2
+  2000   0.465       2.58           2
+  4000   1.250       2.69           2
+
+B. chain, descendant selector `Screen Filler` (2 rules): ink_compute()
+ depth seconds time_ratio depth_ratio
+   100    0.03         NA          NA
+   500    0.44      14.67           5
+  1000    2.80       6.36           2
+  2000   10.80       3.86           2
+  4000   41.43       3.84           2
+
+C. mixed combinators (3 rules, alternating B/X chain): ink_compute()
+ depth seconds time_ratio depth_ratio
+   100    0.03         NA          NA
+   500    0.19       6.33           5
+  1000    0.40       2.11           2
+  2000    0.92       2.30           2
+

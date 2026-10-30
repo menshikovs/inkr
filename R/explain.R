@@ -127,14 +127,16 @@ ink_explain <- function(sheet, element, property) {
   )
 }
 
-explain_property <- function(sheet, element, property) {
+# `prepared` lets a caller that already holds the prepared selectors (a style
+# session) skip preparing them again.
+explain_property <- function(sheet, element, property, prepared = NULL) {
   validate_compute_sheet(sheet)
   chain <- compute_chain(element)
   definition <- find_explain_property(sheet$registry, property)
   depth <- length(chain)
 
   recorder <- new_resolution_recorder(property, depth)
-  resolved <- compute_style_path(sheet, chain, recorder$visit)
+  resolved <- compute_style_path(sheet, chain, recorder$visit, prepared)
 
   steps <- finish_resolution_steps(recorder$steps, chain)
   candidates <- explanation_candidates(

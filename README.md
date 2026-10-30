@@ -10,8 +10,9 @@ depend on `termr` or any other terminal UI framework.
 > **Status: early development.** Stylesheets are parsed, compiled into typed
 > declarations, matched against a logical element tree, run through the cascade
 > and turned into computed styles (typed values for every property), and any
-> computed value can be explained. Nothing is rendered: there is no terminal
-> output, ANSI generation or layout yet.
+> computed value can be explained. Matching is incremental, and optional style
+> sessions cache computed styles and recompute only what a change affects.
+> Nothing is rendered: there is no terminal output, ANSI generation or layout yet.
 
 ## Installation
 
@@ -409,14 +410,94 @@ The result is structured data; printing is only a view of it:
 computed style. Custom registered properties work without changes. See
 `?ink_explain` for the full structure.
 
+### Fast matching
+
+Selectors are *prepared* once per stylesheet and matched *incrementally* down the
+element chain, instead of searching the ancestors again for every element.
+
+* A complex selector is split into compounds and combinators. For each element the
+  engine keeps, per selector prefix, whether it matched the **parent** (needed for
+  `>`) and whether it matched **some ancestor** (needed for a descendant space). The
+  next element reads its parent's state and updates it with a few vectorized
+  operations. Because the whole set of matching ancestors is remembered, not just
+  the nearest, mixed selectors stay exact: `A > B C` still matches `C` in
+  `A > B > B > C`. An element is never its own ancestor.
+* A *selector index* files each selector under its rightmost compound (ID, else
+  first class, else type, else a fallback list), so only selectors that could match
+  an element are tested against it. The index can include selectors that turn out
+  not to match, never the reverse; every candidate is still checked in full.
+* Work per element depends on the stylesheet, not on the depth: a chain of D
+  elements costs O(D) rather than O(D²). `ink_match()`, `ink_compute()` and
+  `ink_explain()` all use it and return exactly what they returned before (the test
+  suite compares them with the previous engine's recorded results, with the original
+  matcher and with an exhaustive oracle).
+
+On one machine, `ink_compute()` of a 4000-deep chain with a rule `Screen Filler`
+took about 41 s before and about 2 s after; see `bench/benchmark-styles.R` and the
+recorded runs in `bench/`. Timings depend on the machine; compare runs made together.
+
+### Style sessions
+
+For a tree that is queried repeatedly and changed a little at a time, a *session*
+owns the tree and caches computed styles. The stateless functions above keep working
+without it and give identical results.
+
+```r
+sheet <- ink_compile(ink_parse("
+  Screen { color: white; }
+  .active Button { color: yellow; }
+"))
+
+session <- ink_session(sheet)
+ink_session_set(session, key = "root", type = "Screen")
+ink_session_set(session, key = "panel", type = "Container", parent_key = "root")
+ink_session_set(session, key = "button", type = "Button", classes = "primary",
+                parent_key = "panel")
+
+first <- ink_session_compute(session, "button")   # computes root, panel, button
+second <- ink_session_compute(session, "button")  # cache hit
+ink_session_stats(session)
+#> <ink_session_stats> 3 nodes, 3 cached | hits 1, misses 1 | computed 3, invalidated 0
+
+ink_session_set(session, "panel", classes = "active")  # an ancestor changes
+third <- ink_session_compute(session, "button")
+third$values$color                                     # now yellow
+ink_session_stats(session)
+#> <ink_session_stats> 3 nodes, 3 cached | hits 1, misses 2 | computed 5, invalidated 2
+```
+
+* **Identity.** Nodes are addressed by a *key* you choose. It is a session-local
+  runtime identity, separate from the CSS `id` that `#save` matches (several nodes may
+  share a CSS `id`). Nothing is guessed from an element's contents or address.
+* **Updating.** `ink_session_set()` adds or updates a node. For an existing key only
+  the arguments you pass change; `id = NULL`, `classes = character()`,
+  `states = character()` and `parent_key = NULL` reset a field explicitly. A change
+  is validated completely before anything is modified, so a failed call leaves the
+  session untouched.
+* **Invalidation.** Changing a node (including moving it to another parent) drops the
+  cached styles of that node and *all its descendants*, because descendant selectors
+  and inheritance can make any of them depend on it. Ancestors, siblings and other
+  branches keep their caches, and a computation resumes from the nearest valid cached
+  ancestor. Removing a node removes its whole subtree.
+* **Cache entries** carry the node's revision and its parent's revision and are only
+  used while both match, in addition to being dropped eagerly.
+* **Sessions are independent.** A session holds its own copy of the stylesheet and
+  never modifies it; two sessions never share nodes, caches or statistics.
+* `ink_session_explain()` is `ink_explain()` for a node; it is not cached, so it can
+  never be stale.
+
+See `?ink_session` and `?ink_session_error`.
+
 ### Current limitations
 
 * No rendering, terminal output, ANSI generation or layout.
-* No caching: `ink_compute()` re-matches every element on the path each call.
+* `ink_compute()` itself is stateless and re-evaluates the whole path on every call;
+  use a style session for repeated queries.
 * One stylesheet only; no `unset`, `revert`, `!important` or inline styles.
 * Errors are `ink_match_error` (elements, matching), `ink_compute_error`
-  (computation) and `ink_explain_error` (explanations); see `?ink_match_error`,
-  `?ink_compute_error` and `?ink_explain_error`.
+  (computation), `ink_explain_error` (explanations) and `ink_session_error` (sessions);
+  see `?ink_match_error`, `?ink_compute_error`, `?ink_explain_error` and
+  `?ink_session_error`.
 * `ink_explain()` explains one property per call.
 
 See `inst/examples/cascade.inkr` for an annotated stylesheet.
@@ -462,7 +543,8 @@ the structure of the syntax tree and the source location conventions,
 `?ink_values` for the typed values, `?ink_registry` for the property registry,
 `?ink_compile_error` for compilation errors, `?ink_element`, `?ink_match` and
 `?ink_specificity` for matching, `?ink_compute` and `?ink_computed_style`
-for computed styles, and `?ink_explain` for debugging them.
+for computed styles, `?ink_explain` for debugging them, and `?ink_session` for cached,
+incremental computation.
 
 ## Development
 

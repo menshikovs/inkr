@@ -99,9 +99,19 @@ ink_match <- function(sheet, element) {
 
 # The matching rules for the element at the head of `chain` (see
 # element_chain()), in stylesheet source order. The sheet must already have
-# passed validate_compiled_stylesheet(). Also used by ink_compute(), which
-# matches every element on the way down to its target.
+# passed validate_compiled_stylesheet(). The selectors are prepared and matched
+# incrementally from the root (match-prepared.R); callers that match many
+# elements should prepare once and carry state themselves, as ink_compute()
+# does.
 match_rules <- function(sheet, chain) {
+  match_chain(prepare_selectors(sheet), chain)
+}
+
+# The original matcher: every rule, every selector, a fresh walk up the
+# ancestors each time. Slower but simple, and independent of the prepared
+# machinery, so it is kept as the reference the optimized matcher is tested
+# against. The engine does not use it.
+reference_match_rules <- function(sheet, chain) {
   matches <- list()
   for (index in seq_along(sheet$rules)) {
     matched <- match_rule(sheet$rules[[index]], index, chain)
