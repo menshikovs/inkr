@@ -74,8 +74,8 @@ A color descriptor has \code{kind} (\code{"rgb"}, \code{"palette256"}, \code{"pa
 \code{"default"} or \code{"none"}), \code{source} (what the Ink color was: \code{"rgb"}, \code{"ansi"},
 \code{"default"} or \code{"transparent"}), \code{rgb} (the opaque RGB it stands for, if any),
 \code{index} (palette index), \code{reason} (for \code{"none"}: \code{"transparent"} or
-\code{"color_depth_none"}) and \code{explicit} (\code{FALSE} only for a \code{default} that was never
-set, which needs no instruction).
+\code{"color_depth_none"}) and \code{explicit} (\code{FALSE} only for a \code{default} that was not asked
+for by the element's own declarations, which needs no instruction).
 }
 
 \section{Colors}{

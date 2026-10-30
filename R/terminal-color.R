@@ -10,11 +10,11 @@
 #   index   the palette index for the two palette kinds, else NULL;
 #   reason  for kind "none": "transparent" (no fill / nothing to draw) or
 #           "color_depth_none" (the terminal shows no colour);
-#   explicit  FALSE only for a `default` colour that was never set (the computed
-#           style's provenance says "initial"): it is the terminal's colour anyway,
-#           so serialization sends nothing for it. TRUE for everything else,
-#           including a `default` that was declared, inherited or asked for with
-#           `inherit` / `initial`.
+#   explicit  FALSE only for a `default` colour that the element's own declarations
+#           did not ask for (the computed style's provenance says "initial" or
+#           "inherited"): it is the terminal's colour anyway, so serialization sends
+#           nothing for it. TRUE for everything else, including a `default` that was
+#           declared or asked for with `inherit` / `initial`.
 #
 # `default` and `transparent` stay different: `default` is an instruction (the
 # terminal's own colour), `transparent` is the absence of one.

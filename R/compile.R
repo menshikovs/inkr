@@ -57,7 +57,8 @@
 #' @param ast An [ink_stylesheet_ast] from [ink_parse()] or [ink_read()].
 #' @param registry An [ink_registry].
 #' @param x An `ink_compiled_stylesheet`.
-#' @param n Maximum number of rules (and of variables) to print.
+#' @param n Maximum number of rules (and of variables) to print: a single
+#'   non-negative number (`Inf` prints all).
 #' @param ... Ignored.
 #' @return `ink_compile()` returns an `ink_compiled_stylesheet`. Invalid
 #'   stylesheets signal an `ink_compile_error` ([ink_compile_error]).
@@ -175,6 +176,7 @@ abort_unknown_property <- function(decl, registry, source) {
 #' @rdname ink_compile
 #' @export
 print.ink_compiled_stylesheet <- function(x, n = 20L, ...) {
+  n <- check_print_limit(n)
   rules <- length(x$rules)
   variables <- length(x$variables)
   cat(sprintf(

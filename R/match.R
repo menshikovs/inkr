@@ -62,7 +62,8 @@
 #' @param sheet An [ink_compiled_stylesheet][ink_compile].
 #' @param element An [ink_element].
 #' @param x An `ink_match_result`.
-#' @param n Maximum number of matching rules to print.
+#' @param n Maximum number of matching rules to print: a single non-negative
+#'   number (`Inf` prints all).
 #' @param ... Ignored.
 #' @return `ink_match()` returns an `ink_match_result`. Invalid inputs signal an
 #'   `ink_match_error` ([ink_match_error]). `print()` returns `x` invisibly.
@@ -193,6 +194,7 @@ match_rule <- function(rule, index, chain) {
 #' @rdname ink_match
 #' @export
 print.ink_match_result <- function(x, n = 20L, ...) {
+  n <- check_print_limit(n)
   count <- length(x$matches)
   cat(sprintf(
     "<ink_match_result> %d matching rule%s for %s\n",

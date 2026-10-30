@@ -27,10 +27,10 @@
 #' nothing.
 #'
 #' The terminal's default colors are SGR `39` (foreground) and `49`
-#' (background). They are emitted when the stylesheet asked for them (a declared
-#' or inherited `default`, or `inherit` / `initial` resolving to it) and not when
-#' a color was simply never set, even though both compute to `default`; otherwise
-#' every style would carry a pointless `39`. A style with nothing to apply returns
+#' (background). They are emitted when the element's own declarations asked for
+#' them (a declared `default`, or `inherit` / `initial` resolving to it) and not
+#' when a color was simply never set or only inherited, even though all of these
+#' compute to `default`; otherwise every style would carry a pointless `39`. A style with nothing to apply returns
 #' the text unchanged, without escape sequences, and so does an empty `text`.
 #'
 #' @section Reset:

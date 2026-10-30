@@ -52,7 +52,8 @@
 #' to 6.
 #'
 #' @param x An `ink_stylesheet_ast`.
-#' @param n Maximum number of statements to print.
+#' @param n Maximum number of statements to print: a single non-negative number
+#'   (`Inf` prints all).
 #' @param ... Ignored.
 #' @return `print()` returns `x` invisibly.
 #' @name ink_stylesheet_ast
@@ -158,6 +159,7 @@ new_ink_compound_selector <- function(type, id, classes, pseudo_classes, span) {
 #' @rdname ink_stylesheet_ast
 #' @export
 print.ink_stylesheet_ast <- function(x, n = 20L, ...) {
+  n <- check_print_limit(n)
   count <- length(x$statements)
   cat(
     sprintf(

@@ -13,7 +13,7 @@ ink_explain(sheet, element, property)
 \item{x}{An \code{ink_style_explanation}.}
 
 \item{n}{Maximum number of entries shown in each section of the printed
-output (\code{Inf} for all).}
+output: a single non-negative number (\code{Inf} for all).}
 
 \item{...}{Ignored.}
 

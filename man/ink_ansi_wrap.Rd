@@ -46,10 +46,10 @@ Colors with \code{kind = "none"} (transparent, or any color under
 nothing.
 
 The terminal's default colors are SGR \code{39} (foreground) and \code{49}
-(background). They are emitted when the stylesheet asked for them (a declared
-or inherited \code{default}, or \code{inherit} / \code{initial} resolving to it) and not when
-a color was simply never set, even though both compute to \code{default}; otherwise
-every style would carry a pointless \code{39}. A style with nothing to apply returns
+(background). They are emitted when the element's own declarations asked for
+them (a declared \code{default}, or \code{inherit} / \code{initial} resolving to it) and not
+when a color was simply never set or only inherited, even though all of these
+compute to \code{default}; otherwise every style would carry a pointless \code{39}. A style with nothing to apply returns
 the text unchanged, without escape sequences, and so does an empty \code{text}.
 }
 

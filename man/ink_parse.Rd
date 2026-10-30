@@ -56,8 +56,8 @@ Malformed input signals an error of class \code{ink_parse_error}; the first
 problem found is reported and parsing stops. The condition has these
 fields, in addition to the usual \code{message}:
 \itemize{
-\item \code{code}: a stable machine-readable string such as \code{"missing_semicolon"},
-\code{"missing_closing_brace"}, \code{"unterminated_comment"} or \code{"empty_value"}.
+\item \code{code}: a stable machine-readable string; the complete set is listed
+below.
 \item \code{detail}: the human-readable explanation, without the location prefix
 that \code{message} carries.
 \item \code{source}, \code{line}, \code{column}, \code{offset}: where the problem was found. For a
@@ -65,6 +65,22 @@ missing token this is the position where it was expected.
 \item \code{span}: a list with \code{start} and \code{end} locations of the relevant text
 (see \link{ink_stylesheet_ast} for the location conventions).
 }
+
+The error codes are:
+\itemize{
+\item Lexical: \code{unterminated_comment}, \code{unexpected_character},
+\code{invalid_selector}, \code{invalid_variable}, \code{invalid_hex_color}.
+\item Unsupported syntax: \code{unsupported_at_rule}, \code{unsupported_string},
+\code{unsupported_function}, \code{unsupported_important}, \code{unsupported_nesting}.
+\item Structure: \code{unexpected_token}, \code{unexpected_end_of_input},
+\code{unexpected_closing_brace}, \code{missing_opening_brace},
+\code{missing_closing_brace}, \code{missing_colon}, \code{missing_semicolon},
+\code{empty_value}. (\code{invalid_selector} and \code{invalid_variable} are also raised
+by the parser.)
+}
+
+The language specification (\code{docs/language-spec-v0.1.md} in the source
+repository) shows an example for each code.
 
 \code{ink_read()} signals an error of class \code{ink_read_error} if the file cannot
 be read.

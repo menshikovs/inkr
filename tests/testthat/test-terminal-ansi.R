@@ -76,14 +76,26 @@ test_that("an unset color is also `default` but sends nothing", {
   expect_true(terminal_of("Button { color: default; }")$foreground$explicit)
 })
 
-test_that("an inherited default counts as asked for", {
-  sheet <- compile_text("Screen { color: default; }")
-  inherited <- ink_terminal_style(ink_compute(sheet, ink_element("Button", parent = ink_element("Screen"))))
-  expect_true(inherited$foreground$explicit)
-  expect_identical(ink_ansi_wrap("x", inherited), "\033[39mx\033[0m")
-  unrelated <- ink_terminal_style(ink_compute(sheet, ink_element("Button")))
-  expect_false(unrelated$foreground$explicit)
-  expect_identical(ink_ansi_wrap("x", unrelated), "x")
+# Corrected in the v0.1 stabilization: this used to expect "\033[39mx\033[0m" for
+# an inherited default, which also made every child of an unstyled root carry a
+# pointless escape sequence. Only the element's own declarations ask for `default`.
+test_that("an inherited default is not asked for by the element, only a declared one is", {
+  sheet <- compile_text("Screen { color: default; }\nButton.own { color: default; }\nButton.kw { color: inherit; }")
+  screen <- ink_element("Screen")
+  inherited <- ink_terminal_style(ink_compute(sheet, ink_element("Button", parent = screen)))
+  expect_equal(inherited$foreground$kind, "default")
+  expect_false(inherited$foreground$explicit)
+  expect_identical(ink_ansi_wrap("x", inherited), "x")
+  # Declared on the element itself, or asked for through `inherit`: sent.
+  own <- ink_terminal_style(ink_compute(sheet, ink_element("Button", classes = "own", parent = screen)))
+  expect_true(own$foreground$explicit)
+  expect_identical(ink_ansi_wrap("x", own), "\033[39mx\033[0m")
+  keyword <- ink_terminal_style(ink_compute(sheet, ink_element("Button", classes = "kw", parent = screen)))
+  expect_true(keyword$foreground$explicit)
+  expect_identical(ink_ansi_wrap("x", keyword), "\033[39mx\033[0m")
+  # An unstyled element under an unstyled parent stays plain.
+  plain <- ink_terminal_style(ink_compute(compile_text(""), ink_element("B", parent = ink_element("A"))))
+  expect_identical(ink_ansi_wrap("x", plain), "x")
 })
 
 test_that("default colors are not sent when colors are off", {

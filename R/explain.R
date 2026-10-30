@@ -88,7 +88,7 @@
 #' @param property One property name registered in the stylesheet's registry.
 #' @param x An `ink_style_explanation`.
 #' @param n Maximum number of entries shown in each section of the printed
-#'   output (`Inf` for all).
+#'   output: a single non-negative number (`Inf` for all).
 #' @param ... Ignored.
 #' @return An `ink_style_explanation`. Invalid input signals an
 #'   `ink_explain_error` ([ink_explain_error]). `print()` returns `x`

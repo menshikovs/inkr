@@ -4,15 +4,85 @@
 \name{inkr-package}
 \alias{inkr}
 \alias{inkr-package}
-\title{inkr: CSS-Like Styling Language for Terminal User Interfaces}
+\title{inkr: CSS-like styles for terminal user interfaces}
 \description{
-Ink for R is a CSS-like styling language and engine for terminal user interfaces. This early version parses stylesheets written in the 'inkr' language (files with the '.inkr' extension) into an abstract syntax tree, reporting malformed input with structured syntax errors. It has no dependency on any particular terminal user interface framework.
+inkr parses a CSS-like stylesheet language (\code{.inkr} files), works out which
+style applies to a logical user-interface element, and describes that style
+in terms a terminal can show. It is independent of any terminal user
+interface framework.
 }
+\section{The pipeline}{
+
+Each step is a separate function, and each consumes the output of the one
+before:
+\enumerate{
+\item \strong{Parsing}: \code{\link[=ink_parse]{ink_parse()}}, \code{\link[=ink_read]{ink_read()}} turn text into a syntax tree.
+\item \strong{Compilation}: \code{\link[=ink_compile]{ink_compile()}} resolves variables and turns values into
+typed objects, checked against a property registry (\code{\link[=ink_registry]{ink_registry()}},
+\code{\link[=ink_register_property]{ink_register_property()}}).
+\item \strong{Selector matching}: \code{\link[=ink_match]{ink_match()}} finds the rules that apply to an
+\code{\link[=ink_element]{ink_element()}}; \code{\link[=ink_specificity]{ink_specificity()}} gives a selector's specificity.
+\item \strong{Cascade and computed styles}: \code{\link[=ink_compute]{ink_compute()}} applies the cascade,
+\code{inherit} / \code{initial} and inheritance, giving a typed value for every
+property. \code{\link[=ink_explain]{ink_explain()}} says how one value was obtained.
+\item \strong{Terminal style adaptation}: \code{\link[=ink_terminal_style]{ink_terminal_style()}} turns a computed
+style into terminal colors, attributes and border characters for explicit
+\link[=ink_terminal_capabilities]{capabilities}; \code{\link[=ink_ansi_wrap]{ink_ansi_wrap()}} serializes
+them as ANSI escape sequences.
+}
+
+The stylesheet language is specified in \code{docs/language-spec-v0.1.md} in the
+source repository.
+}
+
+\section{Stateless computation and sessions}{
+
+\code{\link[=ink_match]{ink_match()}}, \code{\link[=ink_compute]{ink_compute()}} and \code{\link[=ink_explain]{ink_explain()}} take a compiled stylesheet
+and an element tree and keep nothing between calls. A style session
+(\code{\link[=ink_session]{ink_session()}} and the \verb{ink_session_*()} functions) is an optional layer
+for applications that query a tree repeatedly and change it a little at a
+time: it caches computed styles and recomputes only what a change affects. A
+session returns exactly what the stateless functions return.
+}
+
+\section{What inkr does not do}{
+
+inkr does not render widgets, draw borders, lay out or measure terminal
+space, wrap text, move the cursor, handle input or detect the terminal. The
+terminal adapter takes its capabilities as an explicit argument (it never
+reads \code{TERM}, \code{COLORTERM} or \code{NO_COLOR}) and nothing in the package writes to
+the terminal; displaying the result of \code{\link[=ink_ansi_wrap]{ink_ansi_wrap()}} is up to the caller.
+}
+
+\section{Public interface and internal details}{
+
+The public interface is the exported functions listed above, the S3 classes
+they return and the fields that their help pages document (for example
+\code{code}, \code{detail}, \code{line} and \code{column} of the error conditions; \code{values} and
+\code{provenance} of a computed style; the fields described in
+\link{ink_stylesheet_ast}, \link{ink_values}, \link{ink_match}, \link{ink_explain},
+\link{ink_session} and \link{ink_terminal_style}). Everything else is an internal
+implementation detail and may change without notice: unexported functions
+(including prepared selectors, the selector index, cache entries and the
+lexer and parser), and any field of an object that no help page documents.
+Objects are plain lists with an S3 class and should be treated as read-only;
+use the constructors and functions of the package to create or change them.
+}
+
+\section{Errors}{
+
+Each layer signals its own condition class, with a stable machine-readable
+\code{code}: \link[=ink_parse]{ink_parse_error}, \link{ink_compile_error}, \link{ink_match_error},
+\link{ink_compute_error}, \link{ink_explain_error}, \link{ink_session_error} and
+\link{ink_terminal_error}. An argument of the wrong type given to \code{\link[=ink_parse]{ink_parse()}},
+\code{\link[=ink_read]{ink_read()}} or \code{\link[=ink_compile]{ink_compile()}} is an ordinary R error.
+}
+
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/menshikovs/termr-ink}
-  \item Report bugs at \url{https://github.com/menshikovs/termr-ink/issues}
+  \item \url{https://github.com/menshikovs/ink-for-r}
+  \item Report bugs at \url{https://github.com/menshikovs/ink-for-r/issues}
 }
 
 }

@@ -16,7 +16,8 @@ ink_match(sheet, element)
 
 \item{x}{An \code{ink_match_result}.}
 
-\item{n}{Maximum number of matching rules to print.}
+\item{n}{Maximum number of matching rules to print: a single non-negative
+number (\code{Inf} prints all).}
 
 \item{...}{Ignored.}
 }

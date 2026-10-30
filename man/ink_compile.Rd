@@ -16,7 +16,8 @@ ink_compile(ast, registry = ink_registry())
 
 \item{x}{An \code{ink_compiled_stylesheet}.}
 
-\item{n}{Maximum number of rules (and of variables) to print.}
+\item{n}{Maximum number of rules (and of variables) to print: a single
+non-negative number (\code{Inf} prints all).}
 
 \item{...}{Ignored.}
 }

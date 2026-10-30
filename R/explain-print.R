@@ -8,6 +8,7 @@
 #' @rdname ink_explain
 #' @export
 print.ink_style_explanation <- function(x, n = 10L, ...) {
+  n <- check_print_limit(n)
   cat("<ink_style_explanation>\n\n")
   cat("Element: ", format(x$element), "\n", sep = "")
   cat("Property: ", x$property, "\n", sep = "")
@@ -78,12 +79,13 @@ print_candidate <- function(candidate, source, indent, show_reason) {
 }
 
 # Indices of `total` items to show when at most `n` are allowed: the first and
-# the last n - 1 (the target end of a path matters most).
+# the last n - 1 (the target end of a path matters most). A path is always shown
+# with at least its two ends, and a single item is shown once.
 visible_indices <- function(total, n) {
-  if (total <= n) {
+  if (total <= max(n, 1)) {
     return(seq_len(total))
   }
-  c(1L, seq.int(total - max(n, 2L) + 2L, total))
+  c(1L, seq.int(total - max(n, 2) + 2L, total))
 }
 
 print_resolution <- function(x, n) {

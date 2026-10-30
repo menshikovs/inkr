@@ -37,8 +37,8 @@
 #' `"default"` or `"none"`), `source` (what the Ink color was: `"rgb"`, `"ansi"`,
 #' `"default"` or `"transparent"`), `rgb` (the opaque RGB it stands for, if any),
 #' `index` (palette index), `reason` (for `"none"`: `"transparent"` or
-#' `"color_depth_none"`) and `explicit` (`FALSE` only for a `default` that was never
-#' set, which needs no instruction).
+#' `"color_depth_none"`) and `explicit` (`FALSE` only for a `default` that was not asked
+#' for by the element's own declarations, which needs no instruction).
 #'
 #' @section Colors:
 #' * **Truecolor**: opaque RGB colors are kept exactly (`#7c3aed` is
@@ -126,8 +126,8 @@ ink_terminal_style <- function(style, capabilities = ink_terminal_capabilities()
     depth, matte_rgb
   )
 
-  colors$foreground <- mark_unset_default(colors$foreground, style, "color")
-  colors$background <- mark_unset_default(colors$background, style, "background")
+  colors$foreground <- mark_implicit_default(colors$foreground, style, "color")
+  colors$background <- mark_implicit_default(colors$background, style, "background")
 
   structure(
     list(
@@ -147,11 +147,15 @@ ink_terminal_style <- function(style, capabilities = ink_terminal_capabilities()
   )
 }
 
-# A `default` colour whose property was never set (provenance "initial") is
-# marked implicit: serialization sends no instruction for it. A style without
+# A `default` colour that the element's own declarations did not ask for -- the
+# property is unset (provenance "initial") or its value was merely inherited
+# ("inherited"; the default may have come all the way from the registry) -- is
+# marked implicit: serialization sends no instruction for it. `default` from a
+# declaration, or from `inherit` / `initial`, stays explicit. A style without
 # provenance is treated as explicit.
-mark_unset_default <- function(color, style, property) {
-  if (identical(color$kind, "default") && identical(style$provenance[[property]]$origin, "initial")) {
+mark_implicit_default <- function(color, style, property) {
+  origin <- style$provenance[[property]]$origin
+  if (identical(color$kind, "default") && (identical(origin, "initial") || identical(origin, "inherited"))) {
     color$explicit <- FALSE
   }
   color

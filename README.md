@@ -7,20 +7,56 @@ The language is inspired by Textual CSS (TCSS) but has its own specification
 and implementation. The package is a reusable styling engine: it does **not**
 depend on `termr` or any other terminal UI framework.
 
-> **Status: early development.** Stylesheets are parsed, compiled into typed
-> declarations, matched against a logical element tree, run through the cascade
-> and turned into computed styles (typed values for every property), and any
-> computed value can be explained. Matching is incremental, and optional style
-> sessions cache computed styles and recompute only what a change affects.
-> A backend-neutral adapter turns a computed style into terminal colors, attributes,
-> border characters and optional ANSI escape sequences. Nothing is rendered: there is
-> no widget drawing, cursor control or layout engine.
+> **Status: pre-release.** The pipeline below is implemented and tested. The language is
+> specified in [docs/language-spec-v0.1.md](docs/language-spec-v0.1.md). Package metadata
+> (author, license) still contains placeholders; see [Package metadata](#package-metadata).
+
+## Overview
+
+inkr works in separate steps, each consuming the output of the one before:
+
+```text
+ .inkr text
+     |  ink_parse() / ink_read()       Parsing: text -> syntax tree
+     v
+ syntax tree
+     |  ink_compile()                  Compilation: variables, typed values, property registry
+     v
+ compiled stylesheet  <-- ink_element(): a logical element tree
+     |  ink_match()                    Selector matching and specificity
+     v
+ matched rules
+     |  ink_compute() / ink_explain()  Cascade, inheritance, computed style
+     v
+ computed style
+     |  ink_terminal_style()           Terminal style adaptation (explicit capabilities)
+     v
+ terminal style  -->  ink_ansi_wrap()  optional ANSI SGR text
+```
+
+* **Independent.** inkr does not depend on `termr` or on any TUI framework.
+* **Not a renderer.** It does not draw widgets, lay out or measure terminal space, wrap
+  text, move the cursor or handle input. The terminal adapter *describes* how a style can
+  be shown (colors, attributes, border characters, spacing); a host decides where.
+* **Explicit capabilities.** `ink_terminal_capabilities()` is plain data you supply; the
+  environment (`TERM`, `COLORTERM`, `NO_COLOR`) is never read, and nothing writes to the
+  terminal on its own.
+* **Stateless or sessions.** `ink_match()`, `ink_compute()` and `ink_explain()` keep
+  nothing between calls. A *session* (`ink_session()`) is an optional layer that caches
+  computed styles for a tree that is queried repeatedly and changed a little at a time; it
+  returns exactly what the stateless functions return.
+* **Public interface.** The exported functions, the classes they return and the fields
+  documented in their help pages (see `?inkr`). Anything else, such as unexported functions,
+  prepared selectors and cache entries, is internal and may change.
+* **Language.** The `.inkr` language is specified in
+  [docs/language-spec-v0.1.md](docs/language-spec-v0.1.md); the README shows how to use the
+  package, not the full syntax.
 
 ## Installation
 
 ```r
 # install.packages("remotes")
-remotes::install_github("menshikovs/termr-ink")
+remotes::install_github("menshikovs/ink-for-r")
 ```
 
 ## Usage
@@ -102,41 +138,9 @@ conditionMessage(err)
 #> "app.inkr:2:14: Invalid padding value '1 two'. Expected 1 to 4 non-negative integers."
 ```
 
-### Variables
-
-* Global to the stylesheet; forward references are allowed.
-* May be used inside multi-part values and inside other variables.
-* The last declaration of a name wins. Names are case-sensitive.
-* Substitution is token-based (`$a` never matches the start of `$accent`).
-* Undefined variables (`undefined_variable`) and cycles (`circular_variable`,
-  with the chain `$a -> $b -> $c -> $a`) are errors, even in variables no rule
-  uses.
-
-### Values
-
-| Type | Syntax | Notes |
-|------|--------|-------|
-| color | `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`; `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white` and `bright-` variants; `default`; `transparent` | Hex colors are stored as RGBA integers; ANSI names stay ANSI colors; `transparent` is not black |
-| spacing | 1 to 4 non-negative integers | Stored as `top`, `right`, `bottom`, `left`. No `auto`, negatives or fractions (also for `margin`) |
-| border | `none`, or `single`/`double`/`round`/`heavy` followed by a color | A color is required except for `none` |
-| length | non-negative integer (cells) or `auto` | No `%`, `fr`, viewport units or `calc()` |
-| text_style | `none`, or any of `bold dim italic underline reverse strike` | Stored in a fixed order, duplicates removed |
-
-`inherit` and `initial` are accepted for every property and kept as markers
-(`ink_keyword`); they are not resolved.
-
-### Built-in properties
-
-| Property | Type | Inherits | Initial |
-|----------|------|----------|---------|
-| `color` | color | yes | `default` |
-| `background` | color | no | `transparent` |
-| `text-style` | text_style | yes | `none` |
-| `padding`, `margin` | spacing | no | `0` |
-| `border` | border | no | `none` |
-| `width`, `height` | length | no | `auto` |
-
-Unknown properties are errors. Add your own with the built-in value types:
+Variables, the value syntax and the built-in properties are specified in
+[docs/language-spec-v0.1.md](docs/language-spec-v0.1.md). Unknown properties are errors;
+properties of the built-in value types can be added from R:
 
 ```r
 registry <- ink_register_property(
@@ -145,22 +149,8 @@ registry <- ink_register_property(
 ink_compile(ink_parse("DataTable { row-stripe: #242424; }"), registry)
 ```
 
-### Compile error codes
-
-`undefined_variable`, `circular_variable`, `variable_too_large`,
-`unknown_property`, `invalid_property_value`, `invalid_color`,
-`invalid_spacing`, `invalid_border`, `invalid_length`, `invalid_text_style`,
-`invalid_registry_definition`. See `?ink_compile_error`.
-
-### Current limitations
-
-* Only the first error is reported; variables are checked before rules.
-* Errors in a value that came from a variable point at the declaration using
-  it, not at the variable.
-* No custom value parsers, percentages, `calc()`, `unset`, `revert` or
-  `!important`.
-
-See `inst/examples/variables.inkr` for a complete example.
+Compile errors are `ink_compile_error`s with stable codes (`?ink_compile_error`). See
+`inst/examples/variables.inkr` for a complete example.
 
 ## From stylesheet to computed style
 
@@ -272,7 +262,7 @@ compared lexicographically, never as a weighted sum, so one ID always beats any
 number of classes.
 
 ```r
-ink_specificity(ast$statements[[1]]$selectors$selectors[[1]])
+ink_specificity(ast$statements[[2]]$selectors$selectors[[1]])
 ```
 
 For each property independently:
@@ -527,8 +517,8 @@ print(terminal)
 #>   height      auto
 
 styled_text <- ink_ansi_wrap("Save", terminal)
-encodeString(styled_text)      # the escape sequences, shown literally
-#> [1] "\033[1;37;48;2;124;58;237mSave\033[0m"
+cat(encodeString(styled_text), "\n")   # the escape sequences, shown literally
+#> \033[1;37;48;2;124;58;237mSave\033[0m
 cat(styled_text, "\n")          # optional demonstration: displays styled text on an ANSI terminal
 ```
 
@@ -581,59 +571,37 @@ See `?ink_terminal_style`, `?ink_terminal_capabilities`, `?ink_ansi_wrap` and
 `?ink_terminal_error`. Limitations: no automatic capability detection, no wide-character
 or line-width handling, and no rendering.
 
-### Current limitations
+### Limitations
 
+* Only the first error is reported (variables are checked before rules); an error in a
+  value that came from a variable points at the declaration using it.
+* No custom value parsers, `unset`, `revert`, `!important`, inline styles or multiple
+  stylesheets; see the language specification for the full list of unsupported syntax.
 * No rendering: the terminal adapter produces colors, attributes, border characters and
   optional SGR strings, but nothing draws widgets, moves the cursor or lays out boxes, and
   the package never writes to the terminal on its own.
 * `ink_compute()` itself is stateless and re-evaluates the whole path on every call;
   use a style session for repeated queries.
-* One stylesheet only; no `unset`, `revert`, `!important` or inline styles.
-* Errors are `ink_match_error` (elements, matching), `ink_compute_error`
-  (computation), `ink_explain_error` (explanations) and `ink_session_error` (sessions);
-  see `?ink_match_error`, `?ink_compute_error`, `?ink_explain_error` and
-  `?ink_session_error`.
+* Each layer signals its own condition class with a stable `code`: `ink_parse_error`,
+  `ink_compile_error`, `ink_match_error`, `ink_compute_error`, `ink_explain_error`,
+  `ink_session_error` and `ink_terminal_error`. Wrong argument types for `ink_parse()`,
+  `ink_read()` and `ink_compile()` are ordinary R errors.
 * `ink_explain()` explains one property per call.
 
 See `inst/examples/cascade.inkr` for an annotated stylesheet.
 
-## Language (initial subset)
+## The `.inkr` language
 
-```css
-/* Comments cannot be nested. */
-
-$primary: #7c3aed;          /* variables are declared at the top level */
-
-Screen { background: #181825; }
-
-Button.primary:focus {      /* type, class and pseudo-class */
-    border: heavy $primary;
-}
-
-#results > .row:selected {  /* ID, child combinator */
-    background: $primary;
-}
-
-Container Button,           /* descendant combinator, selector list */
-* { padding: 0 1; }
-```
-
-* Selectors: type, `.class`, `#id`, `*`, compound (`Button.primary:focus`),
-  pseudo-classes (parsed, never interpreted), descendant (`A B`) and child
-  (`A > B`) combinators, and lists (`A, B`).
-* Every declaration ends with `;`. Values must not be empty.
-* Identifiers use ASCII letters, digits, `_` and `-`, and start with a letter
-  or `_`.
-* Not supported, and reported as errors rather than ignored: strings,
-  functions such as `rgb()`, nested rules, `@import` and other at-rules, and
-  `!important`.
-
-Property values are kept as raw text; nothing is resolved or validated yet.
+[docs/language-spec-v0.1.md](docs/language-spec-v0.1.md) is the reference: syntax, selectors
+and specificity, variables, the built-in properties and their value syntax, the cascade and
+inheritance, unsupported features, and the error codes (with an example for each code a
+stylesheet can raise). Its examples and tables are checked by the test suite.
 
 ## Documentation
 
-See `?ink_parse` for the syntax and error reference, `?ink_stylesheet_ast` for
-the structure of the syntax tree and the source location conventions,
+See `?inkr` for the package overview and what is public, `?ink_parse` for the parse
+errors, `?ink_stylesheet_ast` for the structure of the syntax tree and the source
+location conventions,
 `?ink_compile` for variable resolution and the compiled representation,
 `?ink_values` for the typed values, `?ink_registry` for the property registry,
 `?ink_compile_error` for compilation errors, `?ink_element`, `?ink_match` and
@@ -648,7 +616,12 @@ roxygen2::roxygenise()   # regenerate man/ and NAMESPACE
 devtools::test()         # or testthat::test_local()
 ```
 
+Run `R CMD check --no-manual` for the full check. The tests that validate `README.md` and
+`docs/language-spec-v0.1.md` need the source repository, so they are skipped when the tests
+run against an installed or built copy of the package.
+
 ## Package metadata
 
-`DESCRIPTION` (author, maintainer e-mail) and `LICENSE` contain placeholders
-that must be filled in by the package author before any release.
+The version is `0.0.0.9000` (a development version). `DESCRIPTION` (author, maintainer e-mail)
+and `LICENSE` contain placeholders that must be filled in by the package author before any
+release; no license has been chosen yet.

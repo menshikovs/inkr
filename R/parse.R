@@ -27,14 +27,29 @@
 #' problem found is reported and parsing stops. The condition has these
 #' fields, in addition to the usual `message`:
 #'
-#' * `code`: a stable machine-readable string such as `"missing_semicolon"`,
-#'   `"missing_closing_brace"`, `"unterminated_comment"` or `"empty_value"`.
+#' * `code`: a stable machine-readable string; the complete set is listed
+#'   below.
 #' * `detail`: the human-readable explanation, without the location prefix
 #'   that `message` carries.
 #' * `source`, `line`, `column`, `offset`: where the problem was found. For a
 #'   missing token this is the position where it was expected.
 #' * `span`: a list with `start` and `end` locations of the relevant text
 #'   (see [ink_stylesheet_ast] for the location conventions).
+#'
+#' The error codes are:
+#'
+#' * Lexical: `unterminated_comment`, `unexpected_character`,
+#'   `invalid_selector`, `invalid_variable`, `invalid_hex_color`.
+#' * Unsupported syntax: `unsupported_at_rule`, `unsupported_string`,
+#'   `unsupported_function`, `unsupported_important`, `unsupported_nesting`.
+#' * Structure: `unexpected_token`, `unexpected_end_of_input`,
+#'   `unexpected_closing_brace`, `missing_opening_brace`,
+#'   `missing_closing_brace`, `missing_colon`, `missing_semicolon`,
+#'   `empty_value`. (`invalid_selector` and `invalid_variable` are also raised
+#'   by the parser.)
+#'
+#' The language specification (`docs/language-spec-v0.1.md` in the source
+#' repository) shows an example for each code.
 #'
 #' `ink_read()` signals an error of class `ink_read_error` if the file cannot
 #' be read.
@@ -404,7 +419,21 @@ abort_colon_in_value <- function(p, parts, colon, token, owner) {
     parser_abort_at(p, "unexpected_token", "Unexpected ':' in a value", token)
   }
   if (count == 1L) {
-    abort_empty_value(p, colon, parts[[1L]], owner)
+    # A lone word before the colon is the next declaration's name when it starts
+    # on a later line than the colon that opened this value (`color:` followed by
+    # `padding: 1;`): the value is empty. On the same line (`color: red: blue;`)
+    # nothing suggests a new declaration, so report the stray colon instead.
+    if (parts[[1L]]$start$line > colon$end$line) {
+      abort_empty_value(p, colon, parts[[1L]], owner)
+    }
+    parser_abort_at(
+      p, "unexpected_token",
+      sprintf(
+        "Unexpected ':' after '%s' in the value of %s; a value cannot contain ':' (declarations are 'name: value;')",
+        parts[[1L]]$value, owner
+      ),
+      token
+    )
   }
   abort_missing_semicolon(p, parts[[count - 1L]]$end, owner)
 }

@@ -10,7 +10,8 @@
 \arguments{
 \item{x}{An \code{ink_stylesheet_ast}.}
 
-\item{n}{Maximum number of statements to print.}
+\item{n}{Maximum number of statements to print: a single non-negative number
+(\code{Inf} prints all).}
 
 \item{...}{Ignored.}
 }

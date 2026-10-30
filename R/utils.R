@@ -26,3 +26,11 @@ check_source <- function(source) {
   }
   source
 }
+
+# Validates the `n` argument of the print methods: how many entries to show.
+check_print_limit <- function(n) {
+  if (!is.numeric(n) || length(n) != 1L || is.na(n) || n < 0) {
+    stop("`n` must be a single non-negative number (use Inf to print everything).", call. = FALSE)
+  }
+  floor(n)
+}
