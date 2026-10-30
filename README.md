@@ -12,7 +12,9 @@ depend on `termr` or any other terminal UI framework.
 > and turned into computed styles (typed values for every property), and any
 > computed value can be explained. Matching is incremental, and optional style
 > sessions cache computed styles and recompute only what a change affects.
-> Nothing is rendered: there is no terminal output, ANSI generation or layout yet.
+> A backend-neutral adapter turns a computed style into terminal colors, attributes,
+> border characters and optional ANSI escape sequences. Nothing is rendered: there is
+> no widget drawing, cursor control or layout engine.
 
 ## Installation
 
@@ -488,9 +490,102 @@ ink_session_stats(session)
 
 See `?ink_session` and `?ink_session_error`.
 
+### Terminal Style Adapter
+
+A computed style is platform-neutral. `ink_terminal_style()` adapts it to what a
+particular terminal can show, and `ink_ansi_wrap()` serializes colors and text
+attributes as ANSI SGR escape sequences. Neither draws anything, writes to the
+terminal or depends on a TUI framework; a host decides where things go.
+
+```r
+sheet <- ink_compile(ink_parse("
+  $accent: #7c3aed;
+
+  Button.primary {
+    color: white;
+    background: $accent;
+    text-style: bold;
+    padding: 1 2;
+    border: round $accent;
+  }
+"))
+
+button <- ink_element(type = "Button", classes = "primary")
+computed <- ink_compute(sheet, button)
+
+capabilities <- ink_terminal_capabilities(color_depth = "truecolor", unicode = TRUE)
+terminal <- ink_terminal_style(computed, capabilities = capabilities)
+print(terminal)
+#> <ink_terminal_style> truecolor, unicode
+#>   foreground  palette16(7)
+#>   background  rgb(124, 58, 237)
+#>   text styles bold
+#>   border      round  ╭─╮ / │ / ╰─╯  color rgb(124, 58, 237)
+#>   padding     top=1 right=2 bottom=1 left=2
+#>   margin      top=0 right=0 bottom=0 left=0
+#>   width       auto
+#>   height      auto
+
+styled_text <- ink_ansi_wrap("Save", terminal)
+encodeString(styled_text)      # the escape sequences, shown literally
+#> [1] "\033[1;37;48;2;124;58;237mSave\033[0m"
+cat(styled_text, "\n")          # optional demonstration: displays styled text on an ANSI terminal
+```
+
+The package never writes to the terminal on its own; `cat()` above is only there to
+show the effect. (`white` is the ANSI color white, index 7, so it is sent as `37`.)
+
+* **Capability profiles.** `ink_terminal_capabilities()` takes `color_depth`
+  (`"truecolor"`, `"ansi256"`, `"ansi16"` or `"none"`), `unicode` and the supported
+  `text_styles`. It is plain data: `TERM`, `COLORTERM` and `NO_COLOR` are never read,
+  so a host that wants detection does it and passes the result in. One computed style
+  can be adapted for any number of profiles.
+* **Color quantization.** Truecolor keeps RGB exactly. For `ansi256` an RGB color goes
+  to the nearest entry of the xterm 6x6x6 cube or its 24-step grey ramp (squared RGB
+  distance; lower cube level on a channel tie; the cube wins a tie with the grey
+  ramp), never to the theme-dependent colors 0-15. For `ansi16` it goes to the nearest
+  of a fixed reference palette (lowest index on a tie). Named ANSI colors stay ANSI
+  colors at every depth. `"none"` emits no color instructions, and colors are not
+  replaced by black.
+* **`default` vs `transparent`.** `default` is the terminal's own color (SGR `39`/`49`,
+  sent only when the stylesheet asked for it, not when a color was never set);
+  `transparent` is no fill. Both stay visible in the terminal style, and neither is
+  black.
+* **Alpha.** Terminals have no alpha, so a partially transparent color is composited
+  onto a concrete RGB color before quantizing:
+  `result = alpha * color + (1 - alpha) * underlying`. The underlying color is the
+  style's own opaque background, or the explicit `matte` argument
+  (`ink_terminal_style(computed, matte = "#181825")`). Alpha 0 on a background means no
+  fill. If a color needs compositing and no concrete background is known, the error
+  `unknown_alpha_background` is signalled; the terminal's real background is never guessed.
+* **Text attributes.** `bold dim italic underline reverse strike` become SGR
+  1, 2, 3, 4, 7, 9 in that order, limited to what the profile supports. The style keeps
+  both the `requested` and the `enabled` attributes.
+* **Borders.** `single`, `double`, `round` and `heavy` map to box-drawing characters
+  (or `+ - |` when `unicode = FALSE`), kept separate from the border color. No box is
+  drawn.
+* **Spacing and size.** `padding` and `margin` are kept as `c(top, right, bottom, left)`
+  in cells; `width` and `height` stay cell counts or `auto`. Nothing is measured or laid out.
+* **ANSI wrapping.** `ink_ansi_wrap(text, style, reset = TRUE)` returns
+  `ESC[<params>m` + text + `ESC[0m`; with `reset = FALSE` the attributes stay active
+  until something else resets them. A style with nothing to apply returns the text
+  unchanged. Control characters in `text` (ESC and the other C0 controls except tab and
+  newline, DEL and the C1 controls) are removed, so untrusted text cannot inject
+  terminal commands.
+* **Custom properties** (such as `row-stripe`) are kept untouched in
+  `extra_properties`, as their typed values; the adapter gives them no meaning.
+* **Sessions.** Styles from `ink_compute()` and `ink_session_compute()` are adapted
+  alike; sessions know nothing about terminals.
+
+See `?ink_terminal_style`, `?ink_terminal_capabilities`, `?ink_ansi_wrap` and
+`?ink_terminal_error`. Limitations: no automatic capability detection, no wide-character
+or line-width handling, and no rendering.
+
 ### Current limitations
 
-* No rendering, terminal output, ANSI generation or layout.
+* No rendering: the terminal adapter produces colors, attributes, border characters and
+  optional SGR strings, but nothing draws widgets, moves the cursor or lays out boxes, and
+  the package never writes to the terminal on its own.
 * `ink_compute()` itself is stateless and re-evaluates the whole path on every call;
   use a style session for repeated queries.
 * One stylesheet only; no `unset`, `revert`, `!important` or inline styles.
@@ -543,8 +638,8 @@ the structure of the syntax tree and the source location conventions,
 `?ink_values` for the typed values, `?ink_registry` for the property registry,
 `?ink_compile_error` for compilation errors, `?ink_element`, `?ink_match` and
 `?ink_specificity` for matching, `?ink_compute` and `?ink_computed_style`
-for computed styles, `?ink_explain` for debugging them, and `?ink_session` for cached,
-incremental computation.
+for computed styles, `?ink_explain` for debugging them, `?ink_session` for cached,
+incremental computation, and `?ink_terminal_style` for terminal output.
 
 ## Development
 
