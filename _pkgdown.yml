@@ -3,6 +3,9 @@ destination: docs-site
 
 template:
   bootstrap: 5
+  includes:
+    in_header: |
+      <meta name="google-site-verification" content="y-1CU_OpfbxmAGDGQm3qi8Xc9RcalnzCOzJ3CZ2VA_o" />
 
 title: Ink for R
 
