@@ -14,14 +14,15 @@ specificity, cascade and inheritance, plus inspection of style provenance.
 
 ## Test environments
 
-Local:
+* Windows 11 x64, R 4.6.1 (2026-06-24, ucrt), local: `R CMD check --as-cran`
+  on the built tarball, including the vignettes and the PDF and HTML manuals.
+* GitHub Actions, Ubuntu (ubuntu-latest), R-devel: `R CMD check --as-cran
+  --no-manual` (no LaTeX on the runner): passed.
+* GitHub Actions, Windows (windows-latest), R-devel: `R CMD check --as-cran
+  --no-manual`: passed.
 
-* Windows 11 x64, R 4.6.1 (2026-06-24, ucrt): `R CMD check --as-cran` on the
-  built tarball.
-
-Not tested (no access at the time of writing): R-devel, macOS, Linux, the
-declared minimum R 4.0.0, win-builder and R-hub. The package is pure R, has no
-compiled code and no system requirements.
+Not tested: macOS, the declared minimum R 4.0.0, win-builder and R-hub. The
+package is pure R, with no compiled code and no system requirements.
 
 ## R CMD check results
 
