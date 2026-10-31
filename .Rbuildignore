@@ -8,3 +8,4 @@
 ^docs$
 ^\.serena$
 ^LICENSE$
+^cran-comments\.md$
