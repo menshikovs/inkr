@@ -4,3 +4,4 @@
 .Ruserdata
 *.Rcheck/
 inkr_*.tar.gz
+docs-site/

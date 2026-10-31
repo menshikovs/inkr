@@ -8,4 +8,12 @@
 ^docs$
 ^\.serena$
 ^LICENSE$
+^skills$
+^agents$
+^AGENTS\.md$
+^_pkgdown\.yml$
+^pkgdown$
+^doc$
+^Meta$
 ^cran-comments\.md$
+^docs-site$

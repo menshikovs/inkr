@@ -1,0 +1,182 @@
+---
+title: "Styling and Cascade"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Styling and Cascade}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+This article describes how `inkr` decides which declaration wins when several
+rules set the same property. The complete rules are part of the language
+specification; here they are shown by example.
+
+```{r}
+library(inkr)
+```
+
+## Selectors
+
+| Selector | Matches an element when |
+|----------|-------------------------|
+| `*` | always |
+| `Button` | `type` is `"Button"` |
+| `#save` | `id` is `"save"` |
+| `.primary` | `classes` contains `"primary"` |
+| `:focus` | `states` contains `"focus"` (any valid name works) |
+| `Button.primary:focus` | all of the above hold for the same element |
+| `Container Button` | some ancestor is a `Container` (descendant) |
+| `Container > Button` | the direct parent is a `Container` (child) |
+| `Button, Input` | either selector matches |
+
+Selectors are matched right to left against the chain of parents. Identifiers
+are case-sensitive.
+
+## Specificity
+
+`ink_specificity()` returns the tuple `c(id, class, type)`: ids, then classes
+and pseudo-classes, then types. `*` and combinators count nothing. Tuples are
+compared lexicographically, never as a weighted sum, so one id always beats any
+number of classes.
+
+```{r}
+selector <- function(text) {
+  ink_parse(paste(text, "{ color: red; }"))$statements[[1]]$selectors$selectors[[1]]
+}
+ink_specificity(selector("Button"))
+ink_specificity(selector("Button.primary:focus"))
+ink_specificity(selector("#save"))
+ink_specificity(selector("Container Button.primary"))
+```
+
+## Variables
+
+Variables are defined at the top level with `$name: value;` and are resolved
+when the stylesheet is compiled. A property value is typed, not a string:
+
+```{r}
+sheet <- ink_compile(ink_parse("
+  $accent: #7c3aed;
+  Button { background: $accent; }
+"))
+sheet
+sheet$rules[[1]]$declarations[[1]]$value$r
+```
+
+## Resolving conflicting declarations
+
+For each property independently:
+
+1. the declaration with the higher specificity wins;
+2. with equal specificity, the later rule wins;
+3. within one rule, the later declaration wins.
+
+The example below has four rules that set `color`.
+
+```{r}
+sheet <- ink_compile(ink_parse("
+  Screen   { color: green; }
+  Button   { color: white; }
+  .primary { color: blue; }
+  #save    { color: yellow; }
+"))
+screen <- ink_element("Screen", id = "main")
+panel <- ink_element("Container", parent = screen)
+button <- ink_element("Button", id = "save", classes = "primary", parent = panel)
+
+ink_match(sheet, button)
+```
+
+`Screen` does not apply to the button (it is not a `Screen`), so three rules
+compete. Their specificities are `(0, 0, 1)`, `(0, 1, 0)` and `(1, 0, 0)`, and
+the id selector wins even though the rules before it come first in the source.
+
+```{r}
+ink_compute(sheet, button)$values$color
+ink_explain(sheet, button, "color")
+```
+
+Equal specificity is decided by source order:
+
+```{r}
+sheet <- ink_compile(ink_parse("
+  .a { color: red; }
+  .b { color: blue; }
+"))
+element <- ink_element("Label", classes = c("a", "b"))
+ink_compute(sheet, element)$values$color
+```
+
+For a selector list such as `Button, #save`, the specificity used is that of
+the most specific selector that actually matched. Only one stylesheet is
+considered: there are no other origins, inline styles or `!important`.
+
+## Inheritance
+
+For every registered property, `ink_compute()` uses, in order:
+
+1. the winning declaration, if any (`inherit` and `initial` are resolved
+   here);
+2. otherwise the parent's computed value, if the property inherits (`color`
+   and `text-style` among the built-in properties);
+3. otherwise the registry's initial value.
+
+```{r}
+sheet <- ink_compile(ink_parse("
+  Screen { color: green; padding: 2; }
+"))
+screen <- ink_element("Screen")
+label <- ink_element("Label", parent = ink_element("Container", parent = screen))
+style <- ink_compute(sheet, label)
+style$values$color
+style$values$padding
+style$provenance$color$origin
+style$provenance$padding$origin
+```
+
+The label inherits `color` through a container that declares nothing, but not
+`padding`, which does not inherit. `inherit` forces inheritance for any
+property and `initial` always gives the registry's initial value.
+
+## Explaining a value
+
+`ink_explain()` runs the same cascade as `ink_compute()` and records what
+happened, so it cannot disagree with the computed style. For an inherited
+value, the explanation traces the chain of elements:
+
+```{r}
+ink_explain(sheet, label, "color")
+```
+
+The result is structured data (`value`, `origin`, `winner`, `candidates`,
+`resolution`); printing is only a view of it. See `?ink_explain`.
+
+## Style sessions
+
+A session owns an element tree and caches computed styles, for trees that are
+queried repeatedly and changed a little at a time. It returns exactly what the
+stateless functions return.
+
+```{r}
+sheet <- ink_compile(ink_parse("
+  Screen { color: white; }
+  .active Button { color: yellow; }
+"))
+session <- ink_session(sheet)
+ink_session_set(session, key = "root", type = "Screen")
+ink_session_set(session, key = "panel", type = "Container", parent_key = "root")
+ink_session_set(session, key = "button", type = "Button", parent_key = "panel")
+
+ink_session_compute(session, "button")$values$color
+
+ink_session_set(session, "panel", classes = "active")
+ink_session_compute(session, "button")$values$color
+ink_session_stats(session)
+```
+
+Changing a node drops the cached styles of that node and all its descendants;
+other branches keep their caches. See `?ink_session`.

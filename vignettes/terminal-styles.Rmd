@@ -1,0 +1,131 @@
+---
+title: "Terminal Styles"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Terminal Styles}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+A computed style is platform-neutral: colors, text styles, a border and
+spacing. `ink_terminal_style()` adapts it to what a particular terminal can
+show, and `ink_ansi_wrap()` serializes colors and text attributes as ANSI SGR
+escape sequences. None of this requires a real terminal, and `inkr` does not
+write to the terminal on its own.
+
+```{r}
+library(inkr)
+
+sheet <- ink_compile(ink_parse("
+  $accent: #7c3aed;
+
+  Button.primary {
+    color: white;
+    background: $accent;
+    text-style: bold;
+    padding: 1 2;
+    border: round $accent;
+  }
+"))
+button <- ink_element("Button", classes = "primary")
+computed <- ink_compute(sheet, button)
+```
+
+## Explicit capabilities
+
+Capabilities are plain data that you supply. `inkr` never reads `TERM`,
+`COLORTERM` or `NO_COLOR`; a host that wants detection performs it and passes
+the result in.
+
+```{r}
+ink_terminal_capabilities(color_depth = "truecolor", unicode = TRUE)
+ink_terminal_capabilities(color_depth = "ansi16", unicode = FALSE,
+                          text_styles = c("bold", "underline"))
+```
+
+One computed style can be adapted for any number of capability profiles.
+
+## Color depths
+
+```{r}
+for (depth in c("truecolor", "ansi256", "ansi16", "none")) {
+  caps <- ink_terminal_capabilities(color_depth = depth)
+  terminal <- ink_terminal_style(computed, caps)
+  cat(sprintf("%-9s %s\n", depth, encodeString(ink_ansi_wrap("Save", terminal))))
+}
+```
+
+Truecolor keeps RGB exactly. For `ansi256` an RGB color goes to the nearest
+entry of the xterm color cube or grey ramp, and for `ansi16` to the nearest of
+a fixed reference palette. Named ANSI colors stay ANSI colors at every depth,
+which is why `white` is sent as `37`. With `"none"` no color instructions are
+emitted.
+
+## ANSI output
+
+`ink_ansi_wrap(text, style, reset = TRUE)` returns the escape sequence, the
+text and a reset. A style with nothing to apply returns the text unchanged.
+Control characters in the text are removed, so untrusted text cannot inject
+terminal commands.
+
+```{r}
+terminal <- ink_terminal_style(
+  computed, ink_terminal_capabilities(color_depth = "truecolor")
+)
+styled <- ink_ansi_wrap("Save", terminal)
+encodeString(styled)
+encodeString(ink_ansi_wrap("Save", terminal, reset = FALSE))
+encodeString(ink_ansi_wrap("bad\033[2Jtext", terminal))
+```
+
+To see the effect, a host would `cat(styled)` on an ANSI terminal.
+
+## Borders and spacing metadata
+
+Borders map to box-drawing characters (or ASCII when `unicode = FALSE`) and are
+kept separate from the border color. Padding and margin are kept as
+`c(top, right, bottom, left)` in cells. Nothing is drawn or measured.
+
+```{r}
+terminal
+ascii <- ink_terminal_style(
+  computed, ink_terminal_capabilities("ansi16", unicode = FALSE)
+)
+ascii
+```
+
+## Alpha compositing
+
+Terminals have no alpha channel, so a partially transparent color is composited
+onto a concrete RGB color before it is quantized:
+`result = alpha * color + (1 - alpha) * underlying`. The underlying color is
+the style's own opaque background or the explicit `matte` argument. If a color
+needs compositing and no concrete background is known, the error
+`unknown_alpha_background` is signalled; the terminal's real background is
+never guessed.
+
+```{r}
+translucent <- ink_compute(
+  ink_compile(ink_parse("Label { color: #ff000080; }")),
+  ink_element("Label")
+)
+caps <- ink_terminal_capabilities(color_depth = "truecolor")
+err <- tryCatch(ink_terminal_style(translucent, caps), ink_terminal_error = identity)
+err$code
+ink_terminal_style(translucent, caps, matte = "#000000")
+```
+
+## Styling versus rendering
+
+`inkr` decides *what* an element looks like. It does not decide where it goes:
+there is no layout engine, no text measurement or wrapping, no cursor control,
+no input handling and no capability detection. The terminal style describes how
+a style can be shown, and a host application, such as a TUI framework, is
+responsible for drawing. Supported behavior is specified in
+[docs/language-spec-v0.1.md](https://github.com/menshikovs/inkr/blob/main/docs/language-spec-v0.1.md);
+see also `?ink_terminal_style`, `?ink_terminal_capabilities` and
+`?ink_ansi_wrap`.

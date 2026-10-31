@@ -1,0 +1,56 @@
+url: https://menshikovs.github.io/inkr/
+destination: docs-site
+
+template:
+  bootstrap: 5
+
+title: Ink for R
+
+home:
+  title: Ink for R
+  description: A CSS-like stylesheet engine for terminal interfaces, written in R.
+  links:
+    - text: Language specification
+      href: https://github.com/menshikovs/inkr/blob/main/docs/language-spec-v0.1.md
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [github]
+  components:
+    articles:
+      text: Articles
+      menu:
+        - text: Getting Started
+          href: articles/getting-started.html
+        - text: Styling and Cascade
+          href: articles/styling-and-cascade.html
+        - text: Terminal Styles
+          href: articles/terminal-styles.html
+    github:
+      icon: fa-github
+      href: https://github.com/menshikovs/inkr
+      aria-label: GitHub repository
+
+articles:
+  - title: Guides
+    contents:
+      - getting-started
+      - styling-and-cascade
+      - terminal-styles
+
+reference:
+  - title: Package
+    contents: inkr
+  - title: Parsing and compilation
+    contents: [ink_parse, ink_read, ink_compile, ink_stylesheet_ast, ink_values, ink_registry, ink_register_property]
+  - title: Elements and matching
+    contents: [ink_element, ink_match, ink_specificity]
+  - title: Computed styles
+    contents: [ink_compute, ink_computed_style, ink_explain]
+  - title: Style sessions
+    contents: starts_with("ink_session")
+  - title: Terminal styles
+    contents: [ink_terminal_capabilities, ink_terminal_style, ink_ansi_wrap]
+  - title: Errors
+    contents: ends_with("_error")

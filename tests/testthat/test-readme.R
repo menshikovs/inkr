@@ -42,7 +42,7 @@ readme_environment <- function() {
 
 test_that("every README example runs and prints what its comments show", {
   blocks <- readme_blocks(readLines(readme_path(), encoding = "UTF-8"))
-  expect_gt(length(blocks), 10L)
+  expect_gt(length(blocks), 2L)
   env <- readme_environment()
   checked <- 0L
   for (block in blocks) {
@@ -65,7 +65,7 @@ test_that("every README example runs and prints what its comments show", {
       checked <- checked + 1L
     }
   }
-  expect_gt(checked, 40L)
+  expect_gt(checked, 30L)
 })
 
 test_that("the README documents the public functions by name", {

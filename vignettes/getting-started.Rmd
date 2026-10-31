@@ -1,0 +1,147 @@
+---
+title: "Getting Started with inkr"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with inkr}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+`inkr` is a CSS-like styling engine for terminal interfaces. It parses
+stylesheets written in the `.inkr` language, matches them against a logical
+tree of elements and computes the style of each element. It is independent of
+any terminal UI framework and does not render anything.
+
+```{r}
+library(inkr)
+```
+
+The package is installed from GitHub with
+`remotes::install_github("menshikovs/inkr")`.
+
+## A first stylesheet
+
+A stylesheet is a sequence of variables (`$name: value;`) and rules
+(`selector { property: value; }`). Comments use `/* ... */`.
+
+```{r}
+text <- "
+  $primary: #7c3aed;
+
+  Screen { color: white; background: #181825; }
+  Button { background: blue; padding: 1 2; }
+  Button.primary { background: $primary; }
+"
+```
+
+Stylesheets are normally kept in files; `ink_read()` reads a `.inkr` file. The
+package ships a few annotated examples:
+
+```{r}
+path <- system.file("examples", "basic.inkr", package = "inkr")
+basename(path)
+```
+
+## Parsing
+
+`ink_parse()` turns text into a syntax tree. Values are still raw text and
+variables are not resolved.
+
+```{r}
+ast <- ink_parse(text)
+ast
+```
+
+Malformed input signals a structured `ink_parse_error` with a stable `code`
+and a source position:
+
+```{r}
+err <- tryCatch(
+  ink_parse("Button {\n    color: red\n    padding: 1;\n}"),
+  ink_parse_error = identity
+)
+err$code
+conditionMessage(err)
+```
+
+## Compilation
+
+`ink_compile()` resolves variables, checks every declaration against a property
+registry and turns values into typed objects.
+
+```{r}
+sheet <- ink_compile(ast)
+sheet
+sheet$rules[[3]]$declarations[[1]]$value
+```
+
+Compilation does not match selectors or apply the cascade. Invalid values
+signal an `ink_compile_error`:
+
+```{r}
+err <- tryCatch(
+  ink_compile(ink_parse("Button { padding: 1 two; }", source = "app.inkr")),
+  ink_compile_error = identity
+)
+err$code
+conditionMessage(err)
+```
+
+## Elements
+
+An element describes a component of the running application: a type, an
+optional id, classes, active states and a parent. Only parents are stored.
+
+```{r}
+screen <- ink_element("Screen", id = "main")
+button <- ink_element("Button", id = "save", classes = "primary",
+                      states = "focus", parent = screen)
+button
+```
+
+## Matching
+
+`ink_match()` returns the rules whose selectors apply to an element, with their
+specificity.
+
+```{r}
+ink_match(sheet, button)
+```
+
+## Computed styles
+
+`ink_compute()` applies the cascade and inheritance and returns a typed value
+for every registered property.
+
+```{r}
+style <- ink_compute(sheet, button)
+style
+style$values$background
+```
+
+`style$provenance` records how each value was obtained, for example whether it
+was declared, inherited or the initial value.
+
+```{r}
+style$provenance$background$origin
+style$provenance$color$origin
+```
+
+## Inspecting results
+
+`ink_explain()` answers why a property has its value, listing the winning
+declaration and the ones it overrode.
+
+```{r}
+ink_explain(sheet, button, "background")
+```
+
+The next articles describe selectors and the cascade in more detail
+(`vignette("styling-and-cascade", package = "inkr")`) and how a computed style
+is adapted to a terminal (`vignette("terminal-styles", package = "inkr")`). The
+full language is specified in
+[docs/language-spec-v0.1.md](https://github.com/menshikovs/inkr/blob/main/docs/language-spec-v0.1.md).
